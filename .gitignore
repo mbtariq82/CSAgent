@@ -1,0 +1,52 @@
+# Python environments and caches
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local datasets, checkpoints, and model artifacts
+/data/
+/model.pth
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# Credentials and machine-local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*.json
+
+# Benchmark installations and large generated artifacts
+/external/
+/benchmarks-data/
+/cybergym_data/
+/cybergym-server-data/
+/server_poc/
+/generated/
+/artifacts/
+/runs/
+/traces/
+/pocs/
+*.tar
+*.tar.gz
+*.7z
+
+# Editors and operating-system files
+.idea/
+.DS_Store
+Thumbs.db
+
+# Build and package output
+build/
+dist/
+*.egg-info/
