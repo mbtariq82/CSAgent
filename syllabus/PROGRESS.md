@@ -7,7 +7,7 @@ This is the durable index from lessons to their review artifacts. Update it only
 ```text
 lesson=W02D01
 title=Learn CyberGym by running its contract
-status=planned
+status=implementing
 branch=course/w02d01-cybergym-contract
 pull_request=
 ```
@@ -36,6 +36,6 @@ blocked             concrete external blocker recorded in the draft PR
 | W01D04 | Make training safe to import and test | historical | — | — | Existing implementation and lesson record |
 | W01D05 | Make evaluation trustworthy | historical | — | — | Existing implementation and lesson record |
 | W01D06 | Make program boundaries import-safe | historical | — | — | Existing implementation and lesson record |
-| W02D01 | Learn CyberGym by running its contract | planned |  |  |  |
+| W02D01 | Learn CyberGym by running its contract | implementing |  |  | Contract, Level 1 task inventory, and infrastructure smoke evidence in `coursework/cybergym/` |
 
 Add one row when a new lesson begins. A PR-based lesson changes to `merged` only after learner approval, merge, and verification of the recorded merge commit.
