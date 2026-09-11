@@ -1,4 +1,4 @@
-"""Command line entry points used by Lesson 007."""
+"""Command-line entry points for the CyberGym baseline boundary."""
 
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ def _preflight(args: argparse.Namespace) -> int:
         "docker_server": docker_version,
         "wsl_or_linux_distribution": "record manually when running the benchmark inside WSL2/Linux",
         "chosen_external_data_directory": str(args.data_dir.resolve()) if args.data_dir else None,
-        "benchmark_data_inside_course_repo": False,
+        "benchmark_data_inside_project_repo": False,
         "storage_profile": "one-task-plus-official-subset",
     }
     if args.data_dir:
@@ -71,7 +71,7 @@ def _record_submission(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Safe, metadata-only helpers for the CyberGym baseline lesson.")
+    parser = argparse.ArgumentParser(description="Safe, metadata-only helpers for the CyberGym baseline.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     preflight = subparsers.add_parser("preflight", help="Capture host and Docker readiness without downloading data.")

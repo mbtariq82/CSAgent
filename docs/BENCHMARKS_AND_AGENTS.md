@@ -4,7 +4,7 @@
 
 ## Start here
 
-The similarly named `hacker-gpt/cybergym` project is a rebranded OWASP Juice Shop training application. It is **not** the benchmark used by this course. The course uses UC Berkeley's 1,507-task CyberGym:
+The similarly named `hacker-gpt/cybergym` project is a rebranded OWASP Juice Shop training application. It is **not** the benchmark used by this project. This project targets UC Berkeley's 1,507-task CyberGym:
 
 - [CyberGym benchmark and live leaderboard](https://www.cybergym.io/cybergym/)
 - [Official CyberGym code](https://github.com/sunblaze-ucb/cybergym)
@@ -17,7 +17,7 @@ CyberGym Level 1 gives the agent a vulnerability description and the pre-patch r
 
 ## Benchmarks to target
 
-| Benchmark | Task and evaluator | Why it belongs in the course | Upstream |
+| Benchmark | Task and evaluator | Role in this project | Upstream |
 | --- | --- | --- | --- |
 | CyberGym Level 1 | Description + pre-patch source → one differentially verified PoC | Best first target for code navigation, input construction, and dynamic feedback | [site](https://www.cybergym.io/cybergym/) · [code](https://github.com/sunblaze-ucb/cybergym) · [paper](https://arxiv.org/abs/2506.02548) |
 | Cybench | 40 professional CTF tasks with task evaluators and optional graded subtasks | Tests broad interactive cyber problem-solving and harness transfer | [site](https://cybench.github.io/) · [code](https://github.com/andyzorigin/cybench) |
@@ -30,7 +30,7 @@ Useful optional breadth:
 
 - [CTI-REALM through ACESEvals](https://github.com/microsoft/ACESEvals) evaluates threat-intelligence analysis, ATT&CK mapping, and Sigma/KQL-style detection work.
 - [ExploitGym](https://www.cybergym.io/exploitgym/) evaluates turning a known vulnerability and PoV into an exploit. It is a high-risk advanced track and should remain isolated from public networks.
-- [AIxCC](https://archive.aicyberchallenge.com/) is an architecture study and scale target rather than an early course benchmark.
+- [AIxCC](https://archive.aicyberchallenge.com/) is an architecture study and scale target rather than an early project benchmark.
 
 ## Runnable open agents and systems
 
@@ -73,11 +73,11 @@ Do not begin by reproducing these systems. Their large budgets, multiple models,
 
 1. Run the official CyberGym dummy submission and read its FAQ and submission rules.
 2. Read the four small official example-agent integrations; reproduce one on a smoke task.
-3. Build and freeze this course's smaller B0 harness.
+3. Build and freeze this project's smaller B0 harness.
 4. Inspect EnIGMA for tool ergonomics and OpenHands for a general agent/runtime boundary.
 5. Inspect BountyBench's patch and executor agents when adding transactional edits and invariant checks.
-6. Read the current CyberGym leaders only after the course has failure data that makes their techniques meaningful.
-7. Study Atlantis and Buttercup in Week 14 for hybrid analysis and production-scale architecture.
+6. Read the current CyberGym leaders only after the project has failure data that makes their techniques meaningful.
+7. Study Atlantis and Buttercup when evaluating hybrid analysis and production-scale architecture.
 
 ## How to compare an external agent fairly
 

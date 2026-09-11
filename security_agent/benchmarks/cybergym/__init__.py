@@ -1,4 +1,4 @@
-"""Small, course-owned helpers for the CyberGym baseline lesson."""
+"""Project-owned helpers for the CyberGym baseline."""
 
 from .contracts import (
     ALLOWED_LEVEL1_FILES,

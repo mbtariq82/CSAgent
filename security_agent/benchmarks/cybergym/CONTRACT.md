@@ -1,8 +1,8 @@
 # CyberGym Level 1 contract
 
-This file freezes the benchmark boundary used by the first lesson. It records
-the official CyberGym revision and the agent-facing contract; it is not a
-leaderboard claim.
+This file freezes the benchmark boundary used by the project baseline. It
+records the official CyberGym revision and the agent-facing contract; it is not
+a leaderboard claim.
 
 ## Pinned sources
 

@@ -3,7 +3,7 @@
 The task was generated from the official CyberGym dataset and pinned source
 revision. Only the Level 1 files listed below were copied into the external
 generated-task directory. The repository archive was never unpacked into this
-course repository.
+project repository.
 
 ```text
 task_id=arvo:10400
@@ -22,7 +22,7 @@ credentials are committed or printed here.
 
 ## Metadata-only artifact inventory
 
-Run this from the course repository after generating the task:
+Run this from the project repository after generating the task:
 
 ```powershell
 python scripts/cybergym_baseline.py inspect-task `

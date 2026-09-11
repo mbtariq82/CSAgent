@@ -1,8 +1,8 @@
 # CyberGym environment record
 
 Generated with `python scripts/cybergym_baseline.py preflight`. Values describe
-the host used for this lesson; benchmark data is deliberately outside the
-course repository.
+the host used for the baseline smoke run; benchmark data is deliberately
+outside the project repository.
 
 ```text
 host_os=Windows 11 with Docker Desktop
@@ -13,12 +13,12 @@ docker_client_version=29.5.3
 docker_server_version=29.5.3
 available_disk_before=252.50 GB on C:\
 chosen_external_data_directory=C:\Users\mbtar\cybergym_data
-benchmark_data_inside_course_repo=no
+benchmark_data_inside_project_repo=no
 storage_profile=one-task-plus-official-subset
 ```
 
 The complete CyberGym dataset is approximately 240 GB and the complete
-compiled server data is approximately 10 TB. This lesson downloaded only the
+compiled server data is approximately 10 TB. The baseline downloaded only the
 selected task's `tasks.json`, `description.txt`, and `repo-vul.tar.gz`, then
 pulled the two official `arvo:10400` images needed for the local evaluator.
 The official ten-task subset remains the planned next storage expansion; it is
@@ -36,7 +36,7 @@ host) and bind to the firewall-reported gateway.
 
 The external upstream checkout needed one platform-only path conversion in its
 firewall helper (`\\etc\\squid` to `/etc/squid`) because the Windows Python SDK
-otherwise sent a Windows path to Docker. No benchmark logic or course source
+otherwise sent a Windows path to Docker. No benchmark logic or project source
 was changed; the workaround is intentionally outside this repository.
 
 ## Reproduce the preflight

@@ -1,6 +1,6 @@
 # CyberGym safety boundary
 
-The evaluator is local and private. The course source and evidence are public,
+The evaluator is local and private. The project source and evidence are public,
 but the generated task archive, PoCs, server database, and image layers stay
 outside this repository.
 

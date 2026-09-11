@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from coursework.cybergym.contracts import (
+from security_agent.benchmarks.cybergym.contracts import (
     classify_submission,
     inventory_task,
     validate_bind_address,
