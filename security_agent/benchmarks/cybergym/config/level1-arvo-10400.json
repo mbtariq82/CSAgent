@@ -1,72 +1,12 @@
 {
-  "schema_version": 1,
-  "benchmark": {
-    "name": "CyberGym",
-    "source_repository": "https://github.com/sunblaze-ucb/cybergym",
-    "source_commit": "c6fe2027d39471375920b92cf1025e23a99ffda5",
-    "dataset_repository": "https://huggingface.co/datasets/sunblaze-ucb/cybergym",
-    "dataset_revision": "bde190ded494e52bc684b66073b436c9d992c7c6"
-  },
   "task": {
     "id": "arvo:10400",
     "difficulty": "level1",
-    "agent_task_id": "7fa395d7dac0",
-    "required_files": [
-      "README.md",
-      "description.txt",
-      "repo-vul.tar.gz",
-      "submit.sh"
-    ],
-    "forbidden_files": [
-      "error.txt",
-      "patch.diff",
-      "poc",
-      "repo-fix.tar.gz"
-    ],
-    "forbidden_present": [],
     "files": {
-      "README.md": {
-        "size_bytes": 673,
-        "sha256": "cec9438bd20a4463f3d970b1d96cc51c0e9077e1fd8ab6e23d9502692684b195"
-      },
-      "description.txt": {
-        "size_bytes": 111,
-        "sha256": "3cfbcdcdffc1026741d2ec42f1b75eb3d99e31028bddc08850a27287fba1ee19"
-      },
-      "repo-vul.tar.gz": {
-        "size_bytes": 40029434,
-        "sha256": "94f56b7037a4c0976a041f9bc0d340f9ed2db72fb6ff40d859503c25b6dac380"
-      },
-      "submit.sh": {
-        "size_bytes": 844,
-        "sha256": "39b0577350a55d07f940fe0075ed2b2b07fb9ab34ad11a37e2dbf9982d3f76ee"
-      }
+      "README.md": "cec9438bd20a4463f3d970b1d96cc51c0e9077e1fd8ab6e23d9502692684b195",
+      "description.txt": "3cfbcdcdffc1026741d2ec42f1b75eb3d99e31028bddc08850a27287fba1ee19",
+      "repo-vul.tar.gz": "94f56b7037a4c0976a041f9bc0d340f9ed2db72fb6ff40d859503c25b6dac380",
+      "submit.sh": "39b0577350a55d07f940fe0075ed2b2b07fb9ab34ad11a37e2dbf9982d3f76ee"
     }
-  },
-  "evaluator": {
-    "endpoint": "http://127.0.0.1:8666",
-    "submit_path": "/submit-vul",
-    "verify_path": "/verify-agent-pocs",
-    "query_path": "/query-poc",
-    "bind_host": "127.0.0.1",
-    "bind_port": 8666,
-    "images": {
-      "vulnerable": "n132/arvo:10400-vul@sha256:c4b1fea3df4e312e82747c54b715166f2e66654acbc480a328e20cdd8270b444",
-      "patched": "n132/arvo:10400-fix@sha256:07e595f71ae80c5e521312df9a54a08ad08cfc1a07e868c13d7360b6e6dcc394"
-    }
-  },
-  "baseline": {
-    "name": "deterministic-mng-loop",
-    "poc": "minimal_mng_loop_poc",
-    "model_calls": 0,
-    "network": "none",
-    "max_poc_bytes": 10485760,
-    "final_submission": true
-  },
-  "safety": {
-    "task_data_outside_repository": true,
-    "evaluator_private": true,
-    "public_egress": false,
-    "agent_receives_fixed_side": false
   }
 }

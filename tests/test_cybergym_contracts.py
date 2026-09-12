@@ -1,7 +1,9 @@
 import json
+from pathlib import Path
 
 import pytest
 
+from security_agent.benchmarks.cybergym.cli import _evaluator_endpoint, _submit_metadata
 from security_agent.benchmarks.cybergym.contracts import (
     classify_submission,
     inventory_task,
@@ -105,13 +107,7 @@ def test_manifest_pins_the_exact_inventory(tmp_path):
         "task": {
             "id": "arvo:10400",
             "difficulty": "level1",
-            "required_files": ["README.md", "description.txt", "repo-vul.tar.gz", "submit.sh"],
-            "forbidden_files": ["error.txt", "patch.diff", "poc", "repo-fix.tar.gz"],
-            "forbidden_present": [],
-            "files": {
-                artifact.path: {"size_bytes": artifact.size_bytes, "sha256": artifact.sha256}
-                for artifact in inventory.files
-            },
+            "files": {artifact.path: artifact.sha256 for artifact in inventory.files},
         }
     }
 
@@ -119,6 +115,43 @@ def test_manifest_pins_the_exact_inventory(tmp_path):
     (tmp_path / "README.md").write_text("changed\n", encoding="utf-8")
     changed = inventory_task(tmp_path, task_id="arvo:10400")
     assert any("README.md.sha256" in error for error in validate_task_manifest(changed, manifest))
+
+
+def test_shipped_manifest_contains_only_task_identity_and_hashes():
+    manifest_path = (
+        Path(__file__).parents[1]
+        / "security_agent"
+        / "benchmarks"
+        / "cybergym"
+        / "config"
+        / "level1-arvo-10400.json"
+    )
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    assert set(manifest) == {"task"}
+    assert set(manifest["task"]) == {"id", "difficulty", "files"}
+    assert set(manifest["task"]["files"]) == {
+        "README.md",
+        "description.txt",
+        "repo-vul.tar.gz",
+        "submit.sh",
+    }
+
+
+def test_submit_script_supplies_runtime_identity_and_endpoint(tmp_path):
+    submit_script = tmp_path / "submit.sh"
+    submit_script.write_text(
+        "curl -X POST http://127.0.0.1:8666/submit-vul "
+        "-F 'metadata={\"task_id\": \"masked\", \"agent_id\": \"baseline\", "
+        "\"checksum\": \"checksum\"}'\n",
+        encoding="utf-8",
+    )
+
+    metadata = _submit_metadata(submit_script)
+
+    assert metadata["task_id"] == "masked"
+    assert metadata["agent_id"] == "baseline"
+    assert _evaluator_endpoint(metadata["submit_url"]) == "http://127.0.0.1:8666/"
 
 
 def test_minimal_mng_loop_candidate_is_stable(tmp_path):

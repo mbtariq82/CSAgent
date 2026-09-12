@@ -69,44 +69,26 @@ def validate_task_manifest(inventory: TaskInventory, manifest: Mapping[str, Any]
         errors.append(
             f"difficulty mismatch: inventory={inventory.difficulty!r} manifest={task.get('difficulty')!r}"
         )
-    required_files = task.get("required_files")
-    if not isinstance(required_files, (list, tuple, set)) or set(required_files) != set(ALLOWED_LEVEL1_FILES):
-        errors.append("manifest.required_files must match the Level 1 allowlist")
-    forbidden_files = task.get("forbidden_files")
-    if not isinstance(forbidden_files, (list, tuple, set)) or set(forbidden_files) != set(FORBIDDEN_LEVEL1_FILES):
-        errors.append("manifest.forbidden_files must match the Level 1 denylist")
-
     expected_files = task.get("files")
     if not isinstance(expected_files, Mapping):
         errors.append("manifest.task.files must be an object")
         return tuple(errors)
 
-    actual_files = {
-        artifact.path: {"size_bytes": artifact.size_bytes, "sha256": artifact.sha256}
-        for artifact in inventory.files
-    }
+    actual_files = {artifact.path: artifact.sha256 for artifact in inventory.files}
     if set(actual_files) != set(expected_files):
         errors.append(
             "task file set mismatch: "
             f"actual={sorted(actual_files)} manifest={sorted(expected_files)}"
         )
-    for path, expected in expected_files.items():
-        if not isinstance(expected, Mapping):
-            errors.append(f"manifest file entry is not an object: {path}")
+    for path, expected_sha256 in expected_files.items():
+        if not isinstance(expected_sha256, str):
+            errors.append(f"manifest hash must be a string: {path}")
             continue
-        actual = actual_files.get(path)
-        if actual is None:
+        actual_sha256 = actual_files.get(path)
+        if actual_sha256 is None:
             continue
-        for field in ("size_bytes", "sha256"):
-            if actual[field] != expected.get(field):
-                errors.append(f"task file mismatch for {path}.{field}")
-
-    expected_forbidden = tuple(sorted(task.get("forbidden_present", ())))
-    if tuple(inventory.forbidden_present) != expected_forbidden:
-        errors.append(
-            "forbidden file set mismatch: "
-            f"actual={list(inventory.forbidden_present)} manifest={list(expected_forbidden)}"
-        )
+        if actual_sha256 != expected_sha256:
+            errors.append(f"task file mismatch for {path}.sha256")
     if not inventory.safe_for_level1:
         errors.append("task inventory violates the Level 1 agent-visible boundary")
     return tuple(errors)

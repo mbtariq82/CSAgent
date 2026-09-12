@@ -27,6 +27,9 @@ from .contracts import (
 from .poc import write_minimal_mng_loop_poc
 
 DEFAULT_CONFIG = Path(__file__).with_name("config") / "level1-arvo-10400.json"
+MAX_POC_BYTES = 10 * 1024 * 1024
+VERIFY_PATH = "/verify-agent-pocs"
+QUERY_PATH = "/query-poc"
 
 
 def _command(*args: str) -> dict[str, Any]:
@@ -101,6 +104,10 @@ def _submit_metadata(submit_path: Path) -> dict[str, str]:
         if match is None:
             raise ValueError(f"submit.sh is missing metadata field: {field}")
         values[field] = match.group(1)
+    submit_url = re.search(r"https?://[^\s\\]+/submit-vul", text)
+    if submit_url is None:
+        raise ValueError("submit.sh is missing the CyberGym submission URL")
+    values["submit_url"] = submit_url.group(0)
     return values
 
 
@@ -141,27 +148,18 @@ def _post_json(url: str, payload: dict[str, Any], *, api_key: str, timeout: int)
         return {"http_status": None, "error": str(exc)}
 
 
-def _validate_manifest_endpoint(manifest: dict[str, Any]) -> tuple[str, str, str]:
-    evaluator = manifest.get("evaluator")
-    if not isinstance(evaluator, dict):
-        raise ValueError("manifest.evaluator must be an object")
-    endpoint = evaluator.get("endpoint")
-    if not isinstance(endpoint, str):
-        raise ValueError("manifest.evaluator.endpoint must be a URL")
-    parsed = urlparse(endpoint)
+def _evaluator_endpoint(submit_url: str) -> str:
+    """Derive the private evaluator endpoint from CyberGym's submit.sh."""
+
+    parsed = urlparse(submit_url)
     if parsed.scheme != "http" or not parsed.hostname:
-        raise ValueError("CyberGym endpoint must be an HTTP URL with a literal host")
+        raise ValueError("CyberGym submission URL must use HTTP with a literal host")
     validate_bind_address(parsed.hostname)
-    if evaluator.get("bind_host") not in (None, parsed.hostname):
-        raise ValueError("evaluator.bind_host does not match evaluator.endpoint")
-    if evaluator.get("bind_port") not in (None, parsed.port):
-        raise ValueError("evaluator.bind_port does not match evaluator.endpoint")
-    submit_path = evaluator.get("submit_path", "/submit-vul")
-    verify_path = evaluator.get("verify_path", "/verify-agent-pocs")
-    query_path = evaluator.get("query_path", "/query-poc")
-    if not all(isinstance(path, str) and path.startswith("/") for path in (submit_path, verify_path, query_path)):
-        raise ValueError("evaluator API paths must be absolute paths")
-    return endpoint.rstrip("/") + "/", verify_path, query_path
+    if parsed.path != "/submit-vul" or parsed.params or parsed.query or parsed.fragment:
+        raise ValueError("CyberGym submission URL must end with /submit-vul")
+    if parsed.username or parsed.password:
+        raise ValueError("CyberGym submission URL must not contain credentials")
+    return f"{parsed.scheme}://{parsed.netloc}/"
 
 
 def _run_baseline(args: argparse.Namespace) -> int:
@@ -169,7 +167,6 @@ def _run_baseline(args: argparse.Namespace) -> int:
     task = manifest.get("task")
     if not isinstance(task, dict):
         raise ValueError("manifest.task must be an object")
-    endpoint, verify_path, query_path = _validate_manifest_endpoint(manifest)
     task_dir = args.task_dir.resolve()
     submit_path = task_dir / "submit.sh"
     if not submit_path.is_file():
@@ -193,21 +190,14 @@ def _run_baseline(args: argparse.Namespace) -> int:
         return 2
 
     metadata = _submit_metadata(submit_path)
-    expected_agent_task_id = task.get("agent_task_id")
-    if expected_agent_task_id and metadata["task_id"] != expected_agent_task_id:
-        raise ValueError("submit.sh task id does not match the pinned manifest")
-    expected_agent_id = task.get("agent_id")
-    if expected_agent_id and metadata["agent_id"] != expected_agent_id:
-        raise ValueError("submit.sh agent id does not match the pinned manifest")
+    endpoint = _evaluator_endpoint(metadata["submit_url"])
 
     poc_path = (args.poc_path or args.output.with_suffix(".poc")).resolve()
     if task_dir in poc_path.parents:
         raise ValueError("PoC output must be outside the agent-visible task directory")
     poc_identity = write_minimal_mng_loop_poc(poc_path)
-    baseline = manifest.get("baseline", {})
-    max_poc_bytes = int(baseline.get("max_poc_bytes", 10 * 1024 * 1024)) if isinstance(baseline, dict) else 10 * 1024 * 1024
-    if int(poc_identity["length_bytes"]) > max_poc_bytes:
-        raise ValueError("generated PoC exceeds the manifest size limit")
+    if int(poc_identity["length_bytes"]) > MAX_POC_BYTES:
+        raise ValueError("generated PoC exceeds the size limit")
     bash = shutil.which("bash")
     if bash is None:
         raise ValueError("bash is required to execute the official submit.sh")
@@ -241,7 +231,7 @@ def _run_baseline(args: argparse.Namespace) -> int:
         "started_at": started_at,
         "finished_at": _utc_now(),
         "manifest": str(args.config.resolve()),
-        "benchmark": manifest.get("benchmark"),
+        "benchmark": "CyberGym",
         "task": {"id": task.get("id"), "difficulty": task.get("difficulty")},
         "environment": {
             "host_os": platform.platform(),
@@ -270,13 +260,13 @@ def _run_baseline(args: argparse.Namespace) -> int:
     api_key = os.getenv("CYBERGYM_API_KEY")
     if response and response.get("poc_id") and api_key:
         verify_result = _post_json(
-            urljoin(endpoint, verify_path.lstrip("/")),
+            urljoin(endpoint, VERIFY_PATH.lstrip("/")),
             {"agent_id": metadata["agent_id"]},
             api_key=api_key,
             timeout=args.timeout,
         )
         query_result = _post_json(
-            urljoin(endpoint, query_path.lstrip("/")),
+            urljoin(endpoint, QUERY_PATH.lstrip("/")),
             {"agent_id": metadata["agent_id"], "task_id": metadata["task_id"]},
             api_key=api_key,
             timeout=args.timeout,

@@ -31,7 +31,7 @@ integration enabled.
 security_agent/
   benchmarks/
     cybergym/              Level 1 manifest, runner, candidate, and tests
-      config/              pinned task/evaluator manifest
+      config/              pinned task identity and file hashes
 scripts/
   cybergym_baseline.py     reproducible baseline CLI
 tests/

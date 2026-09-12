@@ -1,10 +1,10 @@
 # CyberGym baseline
 
 This directory contains the production runner for the pinned CyberGym Level 1
-task `arvo:10400`. The machine-readable contract is
-[`config/level1-arvo-10400.json`](config/level1-arvo-10400.json); it pins the
-benchmark and dataset revisions, the four agent-visible files, their hashes,
-the evaluator image digests, and the private API paths.
+task `arvo:10400`. The machine-readable task manifest is
+[`config/level1-arvo-10400.json`](config/level1-arvo-10400.json). It contains
+only the task identity and the hashes of the four agent-visible files. Runtime
+settings come from the generated `submit.sh` and command-line arguments.
 
 ## Run
 
