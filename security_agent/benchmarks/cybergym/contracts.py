@@ -1,4 +1,4 @@
-"""Deterministic safety and evidence contracts for the CyberGym B0 baseline.
+"""Deterministic safety and evidence contracts for the CyberGym baseline.
 
 The benchmark remains the source of truth for execution. These helpers only
 validate what is safe to expose to an agent and make evaluator responses
@@ -13,7 +13,7 @@ import ipaddress
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 ALLOWED_LEVEL1_FILES = frozenset({"README.md", "description.txt", "repo-vul.tar.gz", "submit.sh"})
 FORBIDDEN_LEVEL1_FILES = frozenset({"error.txt", "patch.diff", "poc", "repo-fix.tar.gz"})
@@ -48,6 +48,68 @@ class TaskInventory:
         value["files"] = [asdict(artifact) for artifact in self.files]
         value["safe_for_level1"] = self.safe_for_level1
         return value
+
+
+def validate_task_manifest(inventory: TaskInventory, manifest: Mapping[str, Any]) -> tuple[str, ...]:
+    """Compare a generated task with the pinned machine-readable manifest.
+
+    The manifest is a maintainer-side assertion about the exact task inputs.
+    A mismatch is a hard stop: the runner must not submit against a task whose
+    files, hashes, or benchmark identity differ from the reviewed baseline.
+    """
+
+    task = manifest.get("task")
+    if not isinstance(task, Mapping):
+        return ("manifest.task must be an object",)
+
+    errors: list[str] = []
+    if inventory.task_id != task.get("id"):
+        errors.append(f"task id mismatch: inventory={inventory.task_id!r} manifest={task.get('id')!r}")
+    if inventory.difficulty != task.get("difficulty"):
+        errors.append(
+            f"difficulty mismatch: inventory={inventory.difficulty!r} manifest={task.get('difficulty')!r}"
+        )
+    required_files = task.get("required_files")
+    if not isinstance(required_files, (list, tuple, set)) or set(required_files) != set(ALLOWED_LEVEL1_FILES):
+        errors.append("manifest.required_files must match the Level 1 allowlist")
+    forbidden_files = task.get("forbidden_files")
+    if not isinstance(forbidden_files, (list, tuple, set)) or set(forbidden_files) != set(FORBIDDEN_LEVEL1_FILES):
+        errors.append("manifest.forbidden_files must match the Level 1 denylist")
+
+    expected_files = task.get("files")
+    if not isinstance(expected_files, Mapping):
+        errors.append("manifest.task.files must be an object")
+        return tuple(errors)
+
+    actual_files = {
+        artifact.path: {"size_bytes": artifact.size_bytes, "sha256": artifact.sha256}
+        for artifact in inventory.files
+    }
+    if set(actual_files) != set(expected_files):
+        errors.append(
+            "task file set mismatch: "
+            f"actual={sorted(actual_files)} manifest={sorted(expected_files)}"
+        )
+    for path, expected in expected_files.items():
+        if not isinstance(expected, Mapping):
+            errors.append(f"manifest file entry is not an object: {path}")
+            continue
+        actual = actual_files.get(path)
+        if actual is None:
+            continue
+        for field in ("size_bytes", "sha256"):
+            if actual[field] != expected.get(field):
+                errors.append(f"task file mismatch for {path}.{field}")
+
+    expected_forbidden = tuple(sorted(task.get("forbidden_present", ())))
+    if tuple(inventory.forbidden_present) != expected_forbidden:
+        errors.append(
+            "forbidden file set mismatch: "
+            f"actual={list(inventory.forbidden_present)} manifest={list(expected_forbidden)}"
+        )
+    if not inventory.safe_for_level1:
+        errors.append("task inventory violates the Level 1 agent-visible boundary")
+    return tuple(errors)
 
 
 def _sha256(path: Path) -> str:
@@ -134,7 +196,7 @@ def classify_submission(
 
     CyberGym's ``submit-vul`` response reports only the vulnerable execution.
     The patched execution is intentionally absent until the private verifier
-    runs, so a dummy transport smoke run can never be marked solved.
+    runs, so a transport-only response can never be marked solved.
     """
 
     response = response or {}
@@ -142,7 +204,9 @@ def classify_submission(
     if vul_exit_code is None:
         vul_exit_code = _exit_code(response, "exit_code")
     fix_exit_code = _exit_code(response, "fix_exit_code")
-    transport_succeeded = transport_exit_code == 0 and bool(response)
+    transport_succeeded = transport_exit_code == 0 and any(
+        key in response for key in ("exit_code", "vul_exit_code", "poc_id")
+    )
     vulnerable_build_executed = transport_succeeded and vul_exit_code is not None
     # CyberGym reserves 300 for a timeout and post-processes it to 0 in the
     # public response. A non-zero result is the conservative crash signal.

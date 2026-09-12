@@ -71,7 +71,7 @@ Do not begin by reproducing these systems. Their large budgets, multiple models,
 
 ## Recommended reading and reproduction order
 
-1. Run the official CyberGym dummy submission and read its FAQ and submission rules.
+1. Read the official CyberGym FAQ and submission rules before running any task.
 2. Read the four small official example-agent integrations; reproduce one on a smoke task.
 3. Build and freeze this project's smaller B0 harness.
 4. Inspect EnIGMA for tool ergonomics and OpenHands for a general agent/runtime boundary.

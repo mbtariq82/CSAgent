@@ -10,11 +10,13 @@ measured outcome or closes a demonstrated safety gap.
 - [x] Pin the CyberGym source and dataset revisions used by the baseline.
 - [x] Validate the Level 1 agent-visible file contract.
 - [x] Separate transport, vulnerable execution, patched execution, final
-  submission, and task success in recorded results.
-- [x] Exercise the official evaluator with a harmless dummy artifact.
-- [x] Document the network, data, and evaluator trust boundaries.
-- [ ] Re-run the evaluator from a containerized agent environment on Linux or
-  WSL2 with Docker integration enabled.
+  submission, and task success in machine-readable results.
+- [x] Generate one deterministic final candidate and execute the official
+  submission client.
+- [x] Validate task hashes, bind addresses, and non-leakage controls before a
+  candidate can be submitted.
+- [ ] Run the candidate through the private evaluator from a containerized
+  agent environment on Linux or WSL2 with Docker integration enabled.
 
 ## M1 — Minimal agent core (B0)
 
@@ -23,9 +25,9 @@ measured outcome or closes a demonstrated safety gap.
 - [ ] Add a deterministic scripted model for end-to-end tests.
 - [ ] Implement one bounded action/observation loop with an isolated shell
   tool, explicit termination, and an append-only trace.
-- [ ] Implement a CyberGym adapter that exposes only permitted Level 1 inputs
+- [x] Implement a CyberGym adapter that exposes only permitted Level 1 inputs
   and requires one explicit final PoC path.
-- [ ] Freeze a B0 configuration and run one official task.
+- [ ] Freeze the first scored configuration after the private evaluator run.
 
 ## M2 — Reproducible evaluation
 

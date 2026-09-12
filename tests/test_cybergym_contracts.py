@@ -5,8 +5,10 @@ import pytest
 from security_agent.benchmarks.cybergym.contracts import (
     classify_submission,
     inventory_task,
+    validate_task_manifest,
     validate_bind_address,
 )
+from security_agent.benchmarks.cybergym.poc import minimal_mng_loop_poc, write_minimal_mng_loop_poc
 
 
 def test_level1_inventory_hashes_only_agent_visible_files(tmp_path):
@@ -93,3 +95,35 @@ def test_final_submission_requires_vulnerable_crash_and_clean_fix():
 def test_evidence_serializes_as_json():
     evidence = classify_submission({"task_id": "arvo:10400", "exit_code": 0}, transport_exit_code=0)
     json.dumps(evidence)
+
+
+def test_manifest_pins_the_exact_inventory(tmp_path):
+    for name in ("README.md", "description.txt", "repo-vul.tar.gz", "submit.sh"):
+        (tmp_path / name).write_bytes(name.encode("ascii"))
+    inventory = inventory_task(tmp_path, task_id="arvo:10400")
+    manifest = {
+        "task": {
+            "id": "arvo:10400",
+            "difficulty": "level1",
+            "required_files": ["README.md", "description.txt", "repo-vul.tar.gz", "submit.sh"],
+            "forbidden_files": ["error.txt", "patch.diff", "poc", "repo-fix.tar.gz"],
+            "forbidden_present": [],
+            "files": {
+                artifact.path: {"size_bytes": artifact.size_bytes, "sha256": artifact.sha256}
+                for artifact in inventory.files
+            },
+        }
+    }
+
+    assert validate_task_manifest(inventory, manifest) == ()
+    (tmp_path / "README.md").write_text("changed\n", encoding="utf-8")
+    changed = inventory_task(tmp_path, task_id="arvo:10400")
+    assert any("README.md.sha256" in error for error in validate_task_manifest(changed, manifest))
+
+
+def test_minimal_mng_loop_candidate_is_stable(tmp_path):
+    candidate = minimal_mng_loop_poc()
+    assert candidate == b"\x8aMNG\r\n\x1a\n\x00\x00\x00\x01LOOP\x20"
+    identity = write_minimal_mng_loop_poc(tmp_path / "candidate.mng")
+    assert identity["length_bytes"] == 17
+    assert identity["sha256"] == "93d58ee923bb285f23092b10e5414aed158c5cea5774f59d8f4e5f44faf60e76"

@@ -15,22 +15,25 @@ contains:
 - explicit classification of transport, vulnerable execution, patched
   execution, final submission, and task success;
 - a metadata-only preflight and evidence recorder;
-- an isolated local evaluator smoke result using a harmless four-byte artifact;
-- documented environment, artifact hashes, image digests, and shutdown state.
+- a deterministic 17-byte baseline candidate for `arvo:10400`;
+- a final-evaluation command that verifies the candidate against both images
+  through CyberGym's private API when the evaluator is reachable.
 
-The smoke result proves that the official task generator and local evaluator
-can exchange a submission on this host. It is not an agent score and does not
-prove container-to-evaluator routing; that path requires Linux or WSL2 with
-Docker integration enabled.
+No benchmark result is checked into the repository. Run output is generated
+outside Git and is a score only after the private verifier reports both
+vulnerable and patched execution. This Windows host currently cannot route a
+task container to the evaluator; that path requires Linux or WSL2 with Docker
+integration enabled.
 
 ## Project layout
 
 ```text
 security_agent/
   benchmarks/
-    cybergym/              Level 1 contract, helpers, runbook, and evidence
+    cybergym/              Level 1 manifest, runner, candidate, and tests
+      config/              pinned task/evaluator manifest
 scripts/
-  cybergym_baseline.py     metadata-only baseline CLI
+  cybergym_baseline.py     reproducible baseline CLI
 tests/
   test_cybergym_contracts.py
 docs/
@@ -62,9 +65,8 @@ candidate treatments, not assumed requirements.
 
 - [Project roadmap](docs/ROADMAP.md)
 - [Benchmarks and existing agents](docs/BENCHMARKS_AND_AGENTS.md)
-- [CyberGym baseline runbook](security_agent/benchmarks/cybergym/README.md)
-- [CyberGym Level 1 contract](security_agent/benchmarks/cybergym/CONTRACT.md)
-- [Safety boundary](security_agent/benchmarks/cybergym/SAFETY_BOUNDARY.md)
+- [CyberGym baseline runner and boundary](security_agent/benchmarks/cybergym/README.md)
+- [Pinned CyberGym manifest](security_agent/benchmarks/cybergym/config/level1-arvo-10400.json)
 
 ## Development workflow
 
@@ -79,4 +81,6 @@ valid when they are reproducible and inform the next engineering decision.
 Run only official benchmark tasks, synthetic fixtures, or explicitly
 authorized systems. Keep task execution isolated, deny public-network access
 by default, keep evaluators private and outside agent control, and never expose
-CyberGym's submission server to the public internet.
+CyberGym's submission server to the public internet. The runner fails closed
+when task hashes, bind addresses, or final verification do not match the
+pinned manifest.
