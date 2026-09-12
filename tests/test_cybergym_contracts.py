@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 import pytest
 
@@ -7,7 +6,6 @@ from security_agent.benchmarks.cybergym.cli import _evaluator_endpoint, _submit_
 from security_agent.benchmarks.cybergym.contracts import (
     classify_submission,
     inventory_task,
-    validate_task_manifest,
     validate_bind_address,
 )
 from security_agent.benchmarks.cybergym.poc import minimal_mng_loop_poc, write_minimal_mng_loop_poc
@@ -97,45 +95,6 @@ def test_final_submission_requires_vulnerable_crash_and_clean_fix():
 def test_evidence_serializes_as_json():
     evidence = classify_submission({"task_id": "arvo:10400", "exit_code": 0}, transport_exit_code=0)
     json.dumps(evidence)
-
-
-def test_manifest_pins_the_exact_inventory(tmp_path):
-    for name in ("README.md", "description.txt", "repo-vul.tar.gz", "submit.sh"):
-        (tmp_path / name).write_bytes(name.encode("ascii"))
-    inventory = inventory_task(tmp_path, task_id="arvo:10400")
-    manifest = {
-        "task": {
-            "id": "arvo:10400",
-            "difficulty": "level1",
-            "files": {artifact.path: artifact.sha256 for artifact in inventory.files},
-        }
-    }
-
-    assert validate_task_manifest(inventory, manifest) == ()
-    (tmp_path / "README.md").write_text("changed\n", encoding="utf-8")
-    changed = inventory_task(tmp_path, task_id="arvo:10400")
-    assert any("README.md.sha256" in error for error in validate_task_manifest(changed, manifest))
-
-
-def test_shipped_manifest_contains_only_task_identity_and_hashes():
-    manifest_path = (
-        Path(__file__).parents[1]
-        / "security_agent"
-        / "benchmarks"
-        / "cybergym"
-        / "config"
-        / "level1-arvo-10400.json"
-    )
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-
-    assert set(manifest) == {"task"}
-    assert set(manifest["task"]) == {"id", "difficulty", "files"}
-    assert set(manifest["task"]["files"]) == {
-        "README.md",
-        "description.txt",
-        "repo-vul.tar.gz",
-        "submit.sh",
-    }
 
 
 def test_submit_script_supplies_runtime_identity_and_endpoint(tmp_path):

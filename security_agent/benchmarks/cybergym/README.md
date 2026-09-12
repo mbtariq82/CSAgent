@@ -1,10 +1,9 @@
 # CyberGym baseline
 
-This directory contains the production runner for the pinned CyberGym Level 1
-task `arvo:10400`. The machine-readable task manifest is
-[`config/level1-arvo-10400.json`](config/level1-arvo-10400.json). It contains
-only the task identity and the hashes of the four agent-visible files. Runtime
-settings come from the generated `submit.sh` and command-line arguments.
+This directory contains the baseline runner for the CyberGym Level 1 task
+`arvo:10400`. It uses the generated CyberGym task directory directly. The
+runner enforces the four-file Level 1 boundary, while runtime identity and the
+evaluator address come from the generated `submit.sh`.
 
 ## Run
 
@@ -18,7 +17,7 @@ python scripts/cybergym_baseline.py run `
   --output C:\Users\mbtar\cybergym_runs\arvo-10400.json
 ```
 
-The runner validates every task-file hash, generates the deterministic
+The runner validates the task's four-file boundary, generates the deterministic
 17-byte malformed-MNG candidate, executes the official `submit.sh`, and writes
 only redacted fields to the result JSON. It then calls the private
 `/verify-agent-pocs` and `/query-poc` endpoints when `CYBERGYM_API_KEY` is set.

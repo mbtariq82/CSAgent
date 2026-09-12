@@ -10,7 +10,7 @@ only when controlled experiments justify the complexity.
 The CyberGym evaluation boundary is implemented. The repository currently
 contains:
 
-- a pinned Level 1 contract for `arvo:10400`;
+- a Level 1 task boundary for `arvo:10400`;
 - validation of the exact agent-visible file set;
 - explicit classification of transport, vulnerable execution, patched
   execution, final submission, and task success;
@@ -30,8 +30,7 @@ integration enabled.
 ```text
 security_agent/
   benchmarks/
-    cybergym/              Level 1 manifest, runner, candidate, and tests
-      config/              pinned task identity and file hashes
+    cybergym/              Level 1 runner, candidate, and safety checks
 scripts/
   cybergym_baseline.py     reproducible baseline CLI
 tests/
@@ -66,7 +65,6 @@ candidate treatments, not assumed requirements.
 - [Project roadmap](docs/ROADMAP.md)
 - [Benchmarks and existing agents](docs/BENCHMARKS_AND_AGENTS.md)
 - [CyberGym baseline runner and boundary](security_agent/benchmarks/cybergym/README.md)
-- [Pinned CyberGym manifest](security_agent/benchmarks/cybergym/config/level1-arvo-10400.json)
 
 ## Development workflow
 
@@ -82,5 +80,5 @@ Run only official benchmark tasks, synthetic fixtures, or explicitly
 authorized systems. Keep task execution isolated, deny public-network access
 by default, keep evaluators private and outside agent control, and never expose
 CyberGym's submission server to the public internet. The runner fails closed
-when task hashes, bind addresses, or final verification do not match the
-pinned manifest.
+when the task directory contains unexpected files, the evaluator address is
+unsafe, or final verification is unavailable.

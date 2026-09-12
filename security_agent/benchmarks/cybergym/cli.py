@@ -21,12 +21,12 @@ from .contracts import (
     classify_submission,
     dump_json,
     inventory_task,
-    validate_task_manifest,
     validate_bind_address,
 )
 from .poc import write_minimal_mng_loop_poc
 
-DEFAULT_CONFIG = Path(__file__).with_name("config") / "level1-arvo-10400.json"
+TASK_ID = "arvo:10400"
+TASK_DIFFICULTY = "level1"
 MAX_POC_BYTES = 10 * 1024 * 1024
 VERIFY_PATH = "/verify-agent-pocs"
 QUERY_PATH = "/query-poc"
@@ -81,13 +81,6 @@ def _record_submission(args: argparse.Namespace) -> int:
     evidence["raw_response_fields"] = sorted(response)
     dump_json(evidence, args.output)
     return 0
-
-
-def _load_json(path: Path) -> dict[str, Any]:
-    value = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(value, dict):
-        raise ValueError(f"JSON document must be an object: {path}")
-    return value
 
 
 def _utc_now() -> str:
@@ -163,27 +156,21 @@ def _evaluator_endpoint(submit_url: str) -> str:
 
 
 def _run_baseline(args: argparse.Namespace) -> int:
-    manifest = _load_json(args.config)
-    task = manifest.get("task")
-    if not isinstance(task, dict):
-        raise ValueError("manifest.task must be an object")
     task_dir = args.task_dir.resolve()
     submit_path = task_dir / "submit.sh"
     if not submit_path.is_file():
         raise ValueError(f"task directory has no submit.sh: {task_dir}")
-    inventory = inventory_task(task_dir, task_id=str(task["id"]), difficulty=str(task["difficulty"]))
-    manifest_errors = validate_task_manifest(inventory, manifest)
+    inventory = inventory_task(task_dir, task_id=TASK_ID, difficulty=TASK_DIFFICULTY)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    if manifest_errors:
+    if not inventory.safe_for_level1:
         dump_json(
             {
                 "schema_version": 1,
                 "run_kind": "cybergym_final_evaluation",
                 "status": "invalid_task",
                 "created_at": _utc_now(),
-                "manifest": str(args.config.resolve()),
                 "task_inventory": inventory.to_dict(),
-                "errors": list(manifest_errors),
+                "errors": ["task directory violates the CyberGym Level 1 file boundary"],
             },
             args.output,
         )
@@ -230,9 +217,8 @@ def _run_baseline(args: argparse.Namespace) -> int:
         "status": "submission_failed" if not evidence["transport_succeeded"] else "awaiting_verification",
         "started_at": started_at,
         "finished_at": _utc_now(),
-        "manifest": str(args.config.resolve()),
         "benchmark": "CyberGym",
-        "task": {"id": task.get("id"), "difficulty": task.get("difficulty")},
+        "task": {"id": TASK_ID, "difficulty": TASK_DIFFICULTY},
         "environment": {
             "host_os": platform.platform(),
             "architecture": platform.machine(),
@@ -326,7 +312,6 @@ def build_parser() -> argparse.ArgumentParser:
     record.set_defaults(func=_record_submission)
 
     run = subparsers.add_parser("run", help="Generate and submit the deterministic Level 1 candidate.")
-    run.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     run.add_argument("--task-dir", type=Path, required=True)
     run.add_argument("--output", type=Path, required=True, help="Machine-readable result path outside the task directory.")
     run.add_argument("--poc-path", type=Path, help="Optional PoC path; defaults beside --output.")

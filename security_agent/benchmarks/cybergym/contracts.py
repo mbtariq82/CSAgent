@@ -13,7 +13,7 @@ import ipaddress
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 ALLOWED_LEVEL1_FILES = frozenset({"README.md", "description.txt", "repo-vul.tar.gz", "submit.sh"})
 FORBIDDEN_LEVEL1_FILES = frozenset({"error.txt", "patch.diff", "poc", "repo-fix.tar.gz"})
@@ -30,7 +30,7 @@ class TaskArtifact:
 
 @dataclass(frozen=True)
 class TaskInventory:
-    """The small, reviewable manifest of an agent-facing Level 1 task."""
+    """A metadata-only inventory of an agent-facing Level 1 task."""
 
     task_id: str
     difficulty: str
@@ -48,50 +48,6 @@ class TaskInventory:
         value["files"] = [asdict(artifact) for artifact in self.files]
         value["safe_for_level1"] = self.safe_for_level1
         return value
-
-
-def validate_task_manifest(inventory: TaskInventory, manifest: Mapping[str, Any]) -> tuple[str, ...]:
-    """Compare a generated task with the pinned machine-readable manifest.
-
-    The manifest is a maintainer-side assertion about the exact task inputs.
-    A mismatch is a hard stop: the runner must not submit against a task whose
-    files, hashes, or benchmark identity differ from the reviewed baseline.
-    """
-
-    task = manifest.get("task")
-    if not isinstance(task, Mapping):
-        return ("manifest.task must be an object",)
-
-    errors: list[str] = []
-    if inventory.task_id != task.get("id"):
-        errors.append(f"task id mismatch: inventory={inventory.task_id!r} manifest={task.get('id')!r}")
-    if inventory.difficulty != task.get("difficulty"):
-        errors.append(
-            f"difficulty mismatch: inventory={inventory.difficulty!r} manifest={task.get('difficulty')!r}"
-        )
-    expected_files = task.get("files")
-    if not isinstance(expected_files, Mapping):
-        errors.append("manifest.task.files must be an object")
-        return tuple(errors)
-
-    actual_files = {artifact.path: artifact.sha256 for artifact in inventory.files}
-    if set(actual_files) != set(expected_files):
-        errors.append(
-            "task file set mismatch: "
-            f"actual={sorted(actual_files)} manifest={sorted(expected_files)}"
-        )
-    for path, expected_sha256 in expected_files.items():
-        if not isinstance(expected_sha256, str):
-            errors.append(f"manifest hash must be a string: {path}")
-            continue
-        actual_sha256 = actual_files.get(path)
-        if actual_sha256 is None:
-            continue
-        if actual_sha256 != expected_sha256:
-            errors.append(f"task file mismatch for {path}.sha256")
-    if not inventory.safe_for_level1:
-        errors.append("task inventory violates the Level 1 agent-visible boundary")
-    return tuple(errors)
 
 
 def _sha256(path: Path) -> str:
