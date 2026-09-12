@@ -1,4 +1,19 @@
-"""Command-line entry points for the CyberGym baseline boundary."""
+#!/usr/bin/env python3
+"""Execute the baseline submission for arvo:10400.
+
+This runner implements the M0 baseline for CyberGym Level 1 task arvo:10400.
+It validates the task boundary, generates the deterministic 17-byte MNG LOOP
+PoC candidate, executes the official submit.sh, and records evidence.
+
+For production runs, keep task directories and output outside Git. The result
+is only a benchmark score when the private evaluator confirms both vulnerable
+crash and clean patched execution.
+
+Usage:
+    python scripts/cybergym_baseline.py run \\
+      --task-dir /path/to/generated/task \\
+      --output /path/to/result.json
+"""
 
 from __future__ import annotations
 
@@ -12,17 +27,11 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
-from .contracts import (
-    classify_submission,
-    dump_json,
-    inventory_task,
-    validate_bind_address,
-)
+from .contracts import classify_submission, dump_json, inventory_task, validate_bind_address
 from .poc import write_minimal_mng_loop_poc
 
 TASK_ID = "arvo:10400"
@@ -32,55 +41,17 @@ VERIFY_PATH = "/verify-agent-pocs"
 QUERY_PATH = "/query-poc"
 
 
-def _command(*args: str) -> dict[str, Any]:
+def _command(*args: str) -> dict[str, str]:
     executable = shutil.which(args[0])
     if executable is None:
-        return {"command": list(args), "available": False, "returncode": None, "stdout": "", "stderr": "not found"}
+        return {"command": list(args), "available": False, "stderr": "not found"}
     process = subprocess.run(args, capture_output=True, text=True, check=False, timeout=30)
     return {
         "command": list(args),
         "available": True,
-        "returncode": process.returncode,
         "stdout": process.stdout.strip(),
         "stderr": process.stderr.strip(),
     }
-
-
-def _preflight(args: argparse.Namespace) -> int:
-    docker_info = _command("docker", "info", "--format", "{{json .}}")
-    docker_version = _command("docker", "version", "--format", "{{json .Server}}")
-    result = {
-        "host_os": platform.platform(),
-        "architecture": platform.machine(),
-        "python_version": platform.python_version(),
-        "docker_client": _command("docker", "--version"),
-        "docker_info": docker_info,
-        "docker_server": docker_version,
-        "wsl_distribution": _command("wsl.exe", "-l", "-q"),
-        "chosen_external_data_directory": str(args.data_dir.resolve()) if args.data_dir else None,
-        "benchmark_data_inside_project_repo": False,
-        "storage_profile": "one-task-plus-official-subset",
-    }
-    if args.data_dir:
-        args.data_dir.mkdir(parents=True, exist_ok=True)
-        usage = shutil.disk_usage(args.data_dir)
-        result["available_disk_before_bytes"] = usage.free
-    dump_json(result, args.output)
-    return 0 if docker_info.get("returncode") == 0 else 2
-
-
-def _inspect_task(args: argparse.Namespace) -> int:
-    inventory = inventory_task(args.task_dir, task_id=args.task_id, difficulty=args.difficulty)
-    dump_json(inventory.to_dict(), args.output)
-    return 0 if inventory.safe_for_level1 else 2
-
-
-def _record_submission(args: argparse.Namespace) -> int:
-    response = json.loads(args.response.read_text(encoding="utf-8"))
-    evidence = classify_submission(response, transport_exit_code=args.transport_exit_code, final_submission=args.final)
-    evidence["raw_response_fields"] = sorted(response)
-    dump_json(evidence, args.output)
-    return 0
 
 
 def _utc_now() -> str:
@@ -104,8 +75,8 @@ def _submit_metadata(submit_path: Path) -> dict[str, str]:
     return values
 
 
-def _submission_response(stdout: str) -> dict[str, Any]:
-    """Extract the JSON object printed by submit.sh without retaining logs."""
+def _submission_response(stdout: str) -> dict[str, str]:
+    """Extract the JSON object printed by submit.sh."""
 
     for line in reversed(stdout.splitlines()):
         line = line.strip()
@@ -120,7 +91,7 @@ def _submission_response(stdout: str) -> dict[str, Any]:
     return {}
 
 
-def _post_json(url: str, payload: dict[str, Any], *, api_key: str, timeout: int) -> dict[str, Any]:
+def _post_json(url: str, payload: dict[str, str], *, api_key: str, timeout: int) -> dict[str, Any]:
     request = Request(
         url,
         data=json.dumps(payload).encode("utf-8"),
@@ -128,7 +99,7 @@ def _post_json(url: str, payload: dict[str, Any], *, api_key: str, timeout: int)
         method="POST",
     )
     try:
-        with urlopen(request, timeout=timeout) as response:  # noqa: S310 - endpoint is validated before use
+        with urlopen(request, timeout=timeout) as response:
             body = response.read().decode("utf-8")
             parsed = json.loads(body) if body else {}
             return {"http_status": response.status, "response": parsed}
@@ -142,8 +113,6 @@ def _post_json(url: str, payload: dict[str, Any], *, api_key: str, timeout: int)
 
 
 def _evaluator_endpoint(submit_url: str) -> str:
-    """Derive the private evaluator endpoint from CyberGym's submit.sh."""
-
     parsed = urlparse(submit_url)
     if parsed.scheme != "http" or not parsed.hostname:
         raise ValueError("CyberGym submission URL must use HTTP with a literal host")
@@ -155,13 +124,32 @@ def _evaluator_endpoint(submit_url: str) -> str:
     return f"{parsed.scheme}://{parsed.netloc}/"
 
 
-def _run_baseline(args: argparse.Namespace) -> int:
-    task_dir = args.task_dir.resolve()
+def run_baseline(
+    task_dir: Path,
+    output: Path,
+    poc_path: Path | None = None,
+    timeout: int = 1200,
+) -> int:
+    """Run the baseline submission for arvo:10400.
+
+    Args:
+        task_dir: Directory containing the generated task (must have submit.sh)
+        output: Path for the result JSON (must be outside task_dir)
+        poc_path: Optional path for the generated PoC; defaults to output sibling
+        timeout: Submission timeout in seconds
+
+    Returns:
+        0 on successful submission (solved/unsolved/verification_required),
+        2 for validation failures, 3 for other errors
+    """
+    task_dir = task_dir.resolve()
     submit_path = task_dir / "submit.sh"
     if not submit_path.is_file():
         raise ValueError(f"task directory has no submit.sh: {task_dir}")
+
     inventory = inventory_task(task_dir, task_id=TASK_ID, difficulty=TASK_DIFFICULTY)
-    args.output.parent.mkdir(parents=True, exist_ok=True)
+    output.parent.mkdir(parents=True, exist_ok=True)
+
     if not inventory.safe_for_level1:
         dump_json(
             {
@@ -172,22 +160,25 @@ def _run_baseline(args: argparse.Namespace) -> int:
                 "task_inventory": inventory.to_dict(),
                 "errors": ["task directory violates the CyberGym Level 1 file boundary"],
             },
-            args.output,
+            output,
         )
         return 2
 
     metadata = _submit_metadata(submit_path)
     endpoint = _evaluator_endpoint(metadata["submit_url"])
 
-    poc_path = (args.poc_path or args.output.with_suffix(".poc")).resolve()
+    poc_path = (poc_path or output.with_suffix(".poc")).resolve()
     if task_dir in poc_path.parents:
         raise ValueError("PoC output must be outside the agent-visible task directory")
+
     poc_identity = write_minimal_mng_loop_poc(poc_path)
     if int(poc_identity["length_bytes"]) > MAX_POC_BYTES:
         raise ValueError("generated PoC exceeds the size limit")
+
     bash = shutil.which("bash")
     if bash is None:
         raise ValueError("bash is required to execute the official submit.sh")
+
     started_at = _utc_now()
     try:
         process = subprocess.run(
@@ -196,7 +187,7 @@ def _run_baseline(args: argparse.Namespace) -> int:
             text=True,
             check=False,
             cwd=task_dir,
-            timeout=args.timeout,
+            timeout=timeout,
         )
     except subprocess.TimeoutExpired as exc:
         process = None
@@ -211,6 +202,7 @@ def _run_baseline(args: argparse.Namespace) -> int:
         transport_exit_code = process.returncode
 
     evidence = classify_submission(response, transport_exit_code=transport_exit_code, final_submission=False)
+
     result: dict[str, Any] = {
         "schema_version": 1,
         "run_kind": "cybergym_final_evaluation",
@@ -240,6 +232,7 @@ def _run_baseline(args: argparse.Namespace) -> int:
         "evidence": evidence,
         "model_calls": 0,
     }
+
     if not response and (stderr.strip() or stdout.strip()):
         result["submission"]["failure_reason"] = (stderr.strip() or stdout.strip())[:500]
 
@@ -249,13 +242,13 @@ def _run_baseline(args: argparse.Namespace) -> int:
             urljoin(endpoint, VERIFY_PATH.lstrip("/")),
             {"agent_id": metadata["agent_id"]},
             api_key=api_key,
-            timeout=args.timeout,
+            timeout=timeout,
         )
         query_result = _post_json(
             urljoin(endpoint, QUERY_PATH.lstrip("/")),
             {"agent_id": metadata["agent_id"], "task_id": metadata["task_id"]},
             api_key=api_key,
-            timeout=args.timeout,
+            timeout=timeout,
         )
         records = query_result.get("response")
         matching = next(
@@ -284,50 +277,25 @@ def _run_baseline(args: argparse.Namespace) -> int:
     elif response and response.get("poc_id"):
         result["status"] = "verification_required"
 
-    dump_json(result, args.output)
+    dump_json(result, output)
     return 0 if result["status"] in {"solved", "unsolved", "verification_required"} else 3
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Reproducible CyberGym baseline runner and safety checks.")
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    preflight = subparsers.add_parser("preflight", help="Capture host and Docker readiness without downloading data.")
-    preflight.add_argument("--data-dir", type=Path, required=True)
-    preflight.add_argument("--output", type=Path)
-    preflight.set_defaults(func=_preflight)
-
-    inspect = subparsers.add_parser("inspect-task", help="Hash and validate an agent-facing Level 1 task directory.")
-    inspect.add_argument("--task-dir", type=Path, required=True)
-    inspect.add_argument("--task-id", required=True)
-    inspect.add_argument("--difficulty", default="level1")
-    inspect.add_argument("--output", type=Path)
-    inspect.set_defaults(func=_inspect_task)
-
-    record = subparsers.add_parser("record-submission", help="Classify a sanitized submit-vul JSON response.")
-    record.add_argument("--response", type=Path, required=True)
-    record.add_argument("--transport-exit-code", type=int, required=True)
-    record.add_argument("--final", action="store_true")
-    record.add_argument("--output", type=Path, required=True)
-    record.set_defaults(func=_record_submission)
-
-    run = subparsers.add_parser("run", help="Generate and submit the deterministic Level 1 candidate.")
-    run.add_argument("--task-dir", type=Path, required=True)
-    run.add_argument("--output", type=Path, required=True, help="Machine-readable result path outside the task directory.")
-    run.add_argument("--poc-path", type=Path, help="Optional PoC path; defaults beside --output.")
-    run.add_argument("--timeout", type=int, default=1200)
-    run.set_defaults(func=_run_baseline)
-
-    bind = subparsers.add_parser("validate-bind", help="Reject wildcard/public evaluator binds.")
-    bind.add_argument("host")
-    bind.set_defaults(func=lambda args: (print(validate_bind_address(args.host)) or 0))
-    return parser
-
-
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = argparse.ArgumentParser(description="Baseline runner for CyberGym arvo:10400")
+    parser.add_argument("--task-dir", type=Path, required=True, help="Generated task directory")
+    parser.add_argument("--output", type=Path, required=True, help="Result JSON path (outside task dir)")
+    parser.add_argument("--poc-path", type=Path, help="Optional PoC path; defaults to output sibling")
+    parser.add_argument("--timeout", type=int, default=1200, help="Submission timeout in seconds")
+    args = parser.parse_args(argv)
+
     try:
-        return args.func(args)
+        return run_baseline(
+            task_dir=args.task_dir,
+            output=args.output,
+            poc_path=args.poc_path,
+            timeout=args.timeout,
+        )
     except (OSError, ValueError, json.JSONDecodeError, subprocess.SubprocessError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
