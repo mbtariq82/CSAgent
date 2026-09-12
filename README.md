@@ -1,4 +1,4 @@
-# Benchmark-Driven Cybersecurity Agent
+# CSAgent
 
 A benchmark-first cybersecurity agent developed against official evaluators.
 The project starts with the smallest viable harness for UC Berkeley CyberGym
