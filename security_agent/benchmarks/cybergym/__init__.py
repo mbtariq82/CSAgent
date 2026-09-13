@@ -9,7 +9,6 @@ from .contracts import (
     inventory_task,
     validate_bind_address,
 )
-from .poc import minimal_mng_loop_poc, write_minimal_mng_loop_poc
 
 __all__ = [
     "ALLOWED_LEVEL1_FILES",
@@ -19,6 +18,4 @@ __all__ = [
     "classify_submission",
     "inventory_task",
     "validate_bind_address",
-    "minimal_mng_loop_poc",
-    "write_minimal_mng_loop_poc",
 ]

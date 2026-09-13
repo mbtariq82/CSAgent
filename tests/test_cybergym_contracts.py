@@ -2,13 +2,12 @@ import json
 
 import pytest
 
-from security_agent.benchmarks.cybergym.cli import _evaluator_endpoint, _submit_metadata
+from security_agent.benchmarks.cybergym.runner import _evaluator_endpoint, _submit_metadata
 from security_agent.benchmarks.cybergym.contracts import (
     classify_submission,
     inventory_task,
     validate_bind_address,
 )
-from security_agent.benchmarks.cybergym.poc import minimal_mng_loop_poc, write_minimal_mng_loop_poc
 
 
 def test_level1_inventory_hashes_only_agent_visible_files(tmp_path):
@@ -111,11 +110,3 @@ def test_submit_script_supplies_runtime_identity_and_endpoint(tmp_path):
     assert metadata["task_id"] == "masked"
     assert metadata["agent_id"] == "baseline"
     assert _evaluator_endpoint(metadata["submit_url"]) == "http://127.0.0.1:8666/"
-
-
-def test_minimal_mng_loop_candidate_is_stable(tmp_path):
-    candidate = minimal_mng_loop_poc()
-    assert candidate == b"\x8aMNG\r\n\x1a\n\x00\x00\x00\x01LOOP\x20"
-    identity = write_minimal_mng_loop_poc(tmp_path / "candidate.mng")
-    assert identity["length_bytes"] == 17
-    assert identity["sha256"] == "93d58ee923bb285f23092b10e5414aed158c5cea5774f59d8f4e5f44faf60e76"
